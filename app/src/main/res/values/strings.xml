@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">DemoUIA</string>
     <string name="application_insights_id">382cd2ce-9ddb-4697-871f-0415ed9a7644</string>
+
+    <!-- Emotion subscription key -->
+    <string name="subscription_key">c5b2edd0f59d4b2299c9b2d43fab4e3a</string>
+
+    <!-- Face subscription key -->
+    <string name="faceSubscription_key">a1bb07534f8743fdab04292b11e7bb74</string>
+
 </resources>

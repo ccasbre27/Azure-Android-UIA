@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
@@ -23,6 +25,7 @@
             android:name="com.microsoft.applicationinsights.instrumentationKey"
             android:value="@string/application_insights_id" />
 
+        <activity android:name=".helper.SelectImageActivity"></activity>
     </application>
 
 </manifest>
