@@ -11,6 +11,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.JsonElement;
+import com.microsoft.applicationinsights.library.TelemetryClient;
 import com.microsoft.windowsazure.mobileservices.MobileServiceClient;
 import com.microsoft.windowsazure.mobileservices.http.ServiceFilterResponse;
 import com.microsoft.windowsazure.mobileservices.table.MobileServiceTable;
@@ -18,11 +19,13 @@ import com.microsoft.windowsazure.mobileservices.table.TableOperationCallback;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.microsoft.applicationinsights.library.ApplicationInsights;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private MobileServiceClient mClient;
     EditText edtNombre;
+    //TelemetryClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +49,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         }
 
-        
+
+        ApplicationInsights.setup(this.getApplicationContext(), this.getApplication());
+        ApplicationInsights.start();
+
+        // obtenemos la instancia del cliente para telemetría
+
+
+
         /*
         List<Pair<String, String>> parameters = new ArrayList<Pair<String, String>>();
 
@@ -76,7 +86,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if (v.getId() == R.id.btnAgregar)
         {
+            TelemetryClient client = TelemetryClient.getInstance();
+            //track an event
+            client.trackPageView("agregar usuario");
+
             agregarUsuario();
+
+
+
+
+
         }
 
     }
