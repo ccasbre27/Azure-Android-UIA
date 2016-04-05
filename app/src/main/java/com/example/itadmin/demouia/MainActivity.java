@@ -522,10 +522,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 }
 
-
-
                 return true;
-   
+
             }
             catch (FileNotFoundException fileNotFoundException) {
 
@@ -564,10 +562,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         }
 
-        @Override
-        protected void onProgressUpdate(Integer... values) {
-
-        }
 
         @Override
         protected void onCancelled() {
@@ -579,7 +573,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         protected void onPostExecute(Boolean result) {
 
             String mensajeSnack = result ? "Imagen agregada" : "Error al agregar la noticia";
-
 
             Toast.makeText(getApplicationContext(), mensajeSnack, Toast.LENGTH_SHORT).show(); // Don’t forget to show!
 
