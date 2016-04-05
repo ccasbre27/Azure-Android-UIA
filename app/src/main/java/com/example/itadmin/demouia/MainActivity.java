@@ -1,5 +1,6 @@
 package com.example.itadmin.demouia;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -26,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.microsoft.applicationinsights.library.TelemetryClient;
+import com.microsoft.azure.storage.StorageException;
 import com.microsoft.projectoxford.emotion.EmotionServiceClient;
 import com.microsoft.projectoxford.emotion.EmotionServiceRestClient;
 import com.microsoft.projectoxford.emotion.contract.FaceRectangle;
@@ -41,6 +43,8 @@ import com.microsoft.windowsazure.mobileservices.table.TableOperationCallback;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +55,13 @@ import java.util.TreeMap;
 import com.microsoft.applicationinsights.library.ApplicationInsights;
 
 import org.w3c.dom.Text;
+import java.util.UUID;
+
+import android.os.AsyncTask;
+import android.widget.TextView;
+
+import com.microsoft.azure.storage.CloudStorageAccount;
+import com.microsoft.azure.storage.blob.*;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -262,6 +273,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 + "x" + mBitmap.getHeight());
 
                         doRecognize();
+
+                        new UploadReportAsyncTask().execute();
                     }
                 }
                 break;
@@ -397,18 +410,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } else {
                     Integer count = 0;
 
-                    /*
-                    Canvas faceCanvas = new Canvas(mBitmap);
-                    faceCanvas.drawBitmap(mBitmap, 0, 0, null);
-                    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeWidth(5);
-                    paint.setColor(Color.RED);
-
-
-*/
-
-
                     for (RecognizeResult r : result) {
                         txtvLogs.append(String.format("\nFace #%1$d \n", count));
                         txtvLogs.append(String.format("\t anger: %1$.5f\n", r.scores.anger));
@@ -420,13 +421,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         txtvLogs.append(String.format("\t sadness: %1$.5f\n", r.scores.sadness));
                         txtvLogs.append(String.format("\t surprise: %1$.5f\n", r.scores.surprise));
                         txtvLogs.append(String.format("\t face rectangle: %d, %d, %d, %d", r.faceRectangle.left, r.faceRectangle.top, r.faceRectangle.width, r.faceRectangle.height));
-                        /*
-                        faceCanvas.drawRect(r.faceRectangle.left,
-                                r.faceRectangle.top,
-                                r.faceRectangle.left + r.faceRectangle.width,
-                                r.faceRectangle.top + r.faceRectangle.height,
-                                paint);
-                        */
+
                         count++;
 
 
@@ -457,4 +452,140 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
     }
+
+    class UploadReportAsyncTask extends AsyncTask<Void, Integer, Boolean>
+    {
+        public static final String storageConnectionString =
+                "DefaultEndpointsProtocol=http;"
+                        + "AccountName=blobuia;"
+                        + "AccountKey=tn/NyMkTu+3DTuWDobJ1eLqKswa+MvMZ7esqa/Mnf0R6RlVSUE6B7ygOawfrCe6FbzlhFqFqd8BfvY6mfU/2AA==";
+
+
+        String NOMBRE_CONTENEDOR = "img";
+
+        ProgressDialog progressDialog;
+
+        String PATH_IMAGEN = "";
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            // obtenemos la url de la imagen
+            String urlImagen = ImageHelper.getPath(MainActivity.this, mImageUri);
+
+            PATH_IMAGEN = urlImagen;
+
+            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog.setMessage("Agregando imagen...");
+            progressDialog.show();
+            progressDialog.setCancelable(false);
+
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+
+            try{
+
+                // se verifica si es un nuevo registro
+                if(!PATH_IMAGEN.trim().isEmpty())
+                {
+
+                    // configuración de la cuenta a utilizar
+                    CloudStorageAccount account = CloudStorageAccount
+                            .parse(storageConnectionString);
+
+                    // cliente blob
+                    CloudBlobClient blobClient = account.createCloudBlobClient();
+
+                    // referencia del contenedor
+                    CloudBlobContainer container = blobClient.getContainerReference(NOMBRE_CONTENEDOR);
+
+                    // en caso que el contenedor no exista se crea
+                    container.createIfNotExists();
+
+                    // establecemos los permisos del contenedor
+                    BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+                    containerPermissions
+                            .setPublicAccess(BlobContainerPublicAccessType.CONTAINER);
+
+                    container.uploadPermissions(containerPermissions);
+
+                    // obtenemos una referencia al blob
+                    CloudBlockBlob blob = container.getBlockBlobReference(UUID.randomUUID().toString().replace("-", "") + "." + PATH_IMAGEN.substring(PATH_IMAGEN.lastIndexOf(".")+1));
+
+                    // cargamos la imagen
+                    File sourceFile = new File(PATH_IMAGEN);
+
+                    blob.upload(new FileInputStream(sourceFile), sourceFile.length());
+
+                }
+
+
+
+                return true;
+   
+            }
+            catch (FileNotFoundException fileNotFoundException) {
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), "Archivo no encontrado!",Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                return false;
+            }
+            catch (StorageException storageException) {
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), "Contenedor no encontrado!",Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                return false;
+            }
+            catch (final Exception e) {
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), "Exception " + e.toString(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                return false;
+            }
+
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+
+        }
+
+        @Override
+        protected void onCancelled() {
+            Toast.makeText(getApplicationContext(), "Tarea cancelada!",
+                    Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+
+            String mensajeSnack = result ? "Imagen agregada" : "Error al agregar la noticia";
+
+
+            Toast.makeText(getApplicationContext(), mensajeSnack, Toast.LENGTH_SHORT).show(); // Don’t forget to show!
+
+            progressDialog.dismiss();
+        }
+
+    }
+
 }

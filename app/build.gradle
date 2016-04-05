@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.itadmin.demouia"
-        minSdkVersion 16
+        minSdkVersion 19
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
@@ -28,4 +28,5 @@ dependencies {
     compile 'com.microsoft.projectoxford:emotion:1.0.0'
 
     compile 'com.microsoft.projectoxford:face:1.0.0'
+    compile 'com.microsoft.azure.android:azure-storage-android:0.7.0@aar'
 }
