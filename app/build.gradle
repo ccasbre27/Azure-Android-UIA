@@ -27,5 +27,5 @@ dependencies {
     compile 'com.microsoft.azure:applicationinsights-android:1.0-beta.9'
     compile 'com.microsoft.projectoxford:emotion:1.0.0'
 
-    compile 'com.microsoft.projectoxford:face:1.0.0'
+    compile 'com.microsoft.projectoxford:face:1.1.0'
 }

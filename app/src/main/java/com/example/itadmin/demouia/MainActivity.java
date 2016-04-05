@@ -1,5 +1,6 @@
 package com.example.itadmin.demouia;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -7,6 +8,8 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.v4.app.DialogFragment;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,6 +34,7 @@ import com.microsoft.projectoxford.emotion.EmotionServiceRestClient;
 import com.microsoft.projectoxford.emotion.contract.FaceRectangle;
 import com.microsoft.projectoxford.emotion.contract.RecognizeResult;
 import com.microsoft.projectoxford.emotion.rest.EmotionServiceException;
+import com.microsoft.projectoxford.face.FaceServiceClient;
 import com.microsoft.projectoxford.face.FaceServiceRestClient;
 import com.microsoft.projectoxford.face.contract.Face;
 import com.microsoft.windowsazure.mobileservices.MobileServiceClient;
@@ -42,6 +46,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -262,6 +268,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 + "x" + mBitmap.getHeight());
 
                         doRecognize();
+
+
                     }
                 }
                 break;
@@ -397,18 +405,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } else {
                     Integer count = 0;
 
-                    /*
-                    Canvas faceCanvas = new Canvas(mBitmap);
-                    faceCanvas.drawBitmap(mBitmap, 0, 0, null);
-                    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeWidth(5);
-                    paint.setColor(Color.RED);
-
-
-*/
-
-
                     for (RecognizeResult r : result) {
                         txtvLogs.append(String.format("\nFace #%1$d \n", count));
                         txtvLogs.append(String.format("\t anger: %1$.5f\n", r.scores.anger));
@@ -420,16 +416,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         txtvLogs.append(String.format("\t sadness: %1$.5f\n", r.scores.sadness));
                         txtvLogs.append(String.format("\t surprise: %1$.5f\n", r.scores.surprise));
                         txtvLogs.append(String.format("\t face rectangle: %d, %d, %d, %d", r.faceRectangle.left, r.faceRectangle.top, r.faceRectangle.width, r.faceRectangle.height));
-                        /*
-                        faceCanvas.drawRect(r.faceRectangle.left,
-                                r.faceRectangle.top,
-                                r.faceRectangle.left + r.faceRectangle.width,
-                                r.faceRectangle.top + r.faceRectangle.height,
-                                paint);
-                        */
+
                         count++;
-
-
 
                         Map<Double, String> a = new TreeMap<>();
                         a.put(r.scores.anger,"ANGER");
@@ -454,7 +442,85 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             }
 
+            //
+
+            // Put the image into an input stream for detection.
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, output);
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(output.toByteArray());
+
+            // Start a background task to detect faces in the image.
+            new DetectionTask().execute(inputStream);
+
         }
+
+    }
+
+    private class DetectionTask extends AsyncTask<InputStream, String, Face[]> {
+        private boolean mSucceed = true;
+
+        @Override
+        protected Face[] doInBackground(InputStream... params) {
+            // Get an instance of face service client to detect faces in image.
+            FaceServiceClient faceServiceClient =  new FaceServiceRestClient(getString(R.string.faceSubscription_key));
+            try {
+                publishProgress("Detecting...");
+
+                // Start detection.
+                return faceServiceClient.detect(
+                        params[0],  /* Input stream of image to detect */
+                        true,       /* Whether to return face ID */
+                        true,       /* Whether to return face landmarks */
+                        /* Which face attributes to analyze, currently we support:
+                           age,gender,headPose,smile,facialHair */
+                        new FaceServiceClient.FaceAttributeType[] {
+                                FaceServiceClient.FaceAttributeType.Age,
+                                FaceServiceClient.FaceAttributeType.Gender,
+                                FaceServiceClient.FaceAttributeType.Glasses,
+                                FaceServiceClient.FaceAttributeType.Smile,
+                                FaceServiceClient.FaceAttributeType.HeadPose
+                        });
+            } catch (Exception e) {
+                mSucceed = false;
+                publishProgress(e.getMessage());
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPreExecute() {
+
+        }
+
+        @Override
+        protected void onPostExecute(Face[] faces) {
+            if (mSucceed) {
+                String aux =  "";
+                // Show the face details.
+                DecimalFormat formatter = new DecimalFormat("#0.0");
+                for (int position = 0, tam = faces.length; position < tam; position++)
+                {
+
+                    aux = "Age: " + formatter.format(faces[position].faceAttributes.age) + "\n"
+                            + "Gender: " + faces[position].faceAttributes.gender + "\n"
+                            + "Head pose(in degree): roll(" + formatter.format(faces[position].faceAttributes.headPose.roll) + "), "
+                            + "yaw(" + formatter.format(faces[position].faceAttributes.headPose.yaw) + ")\n"
+                            + "Glasses: " + faces[position].faceAttributes.glasses + "\n"
+                            + "Smile: " + formatter.format(faces[position].faceAttributes.smile);
+                }
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Face result")
+                        .setMessage(aux)
+                        .setCancelable(true)
+                        .create().show();
+            }
+
+
+        }
+
+
+
 
     }
 }
